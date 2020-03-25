@@ -14,14 +14,14 @@ Billy spawns an EventMachine-based proxy server, which it uses to intercept
 requests sent by your browser. It has a simple API for configuring which
 requests need stubbing and what they should return.
 
-Billy lets you test against known, repeatable data.  It also allows you to
+Billy lets you test against known, repeatable data. It also allows you to
 test for failure cases.  Does your twitter (or facebook/google/etc)
-integration degrade gracefully when the API starts returning 500s?  Well now
+integration degrade gracefully when the API starts returning 500s? Well now
 you can test it!
 
 ```ruby
 it 'should stub google' do
-  proxy.stub('http://www.google.com/').and_return(:text => "I'm not Google!")
+  proxy.stub('http://www.google.com/').and_return(text: "I'm not Google!")
   visit 'http://www.google.com/'
   expect(page).to have_content("I'm not Google!")
 end
@@ -32,21 +32,25 @@ You can also record HTTP interactions and replay them later. See
 
 ## Installation
 
-Add this line to your application's Gemfile:
+Add this line to your application's `Gemfile`:
 
-    gem 'puffing-billy'
+```ruby
+gem 'puffing-billy', group: :test
+```
 
 And then execute:
 
-    $ bundle
+```sh
+$ bundle
+```
 
 Or install it yourself as:
 
-    $ gem install puffing-billy
+```sh
+$ gem install puffing-billy
+```
 
-## RSpec Usage
-
-### Setup for Capybara
+## Setup for Capybara
 
 In your `rails_helper.rb`:
 
@@ -55,16 +59,20 @@ require 'billy/capybara/rspec'
 
 # select a driver for your chosen browser environment
 Capybara.javascript_driver = :selenium_billy # Uses Firefox
+# Capybara.javascript_driver = :selenium_headless_billy # Uses Firefox in headless mode
 # Capybara.javascript_driver = :selenium_chrome_billy
+# Capybara.javascript_driver = :selenium_chrome_headless_billy
+# Capybara.javascript_driver = :apparition_billy
 # Capybara.javascript_driver = :webkit_billy
 # Capybara.javascript_driver = :poltergeist_billy
 ```
 
 > __Note__: `:poltergeist_billy` doesn't support proxying any localhosts, so you must use
-`:webkit_billy` for headless specs when using puffing-billy for other local rack apps.
+`:webkit_billy`, `:apparition_billy`, or a custom headless selenium registration for
+headless specs when using puffing-billy for other local rack apps.
 See [this phantomjs issue](https://github.com/ariya/phantomjs/issues/11342) for any updates.
 
-### Setup for Watir
+## Setup for Watir
 
 In your `rails_helper.rb`:
 
@@ -77,86 +85,7 @@ require 'billy/watir/rspec'
 # @browser = Billy::Browsers::Watir.new = :phantomjs
 ```
 
-### In your tests (Capybara/Watir)
-
-```ruby
-# Stub and return text, json, jsonp (or anything else)
-proxy.stub('http://example.com/text/').and_return(:text => 'Foobar')
-proxy.stub('http://example.com/json/').and_return(:json => { :foo => 'bar' })
-proxy.stub('http://example.com/jsonp/').and_return(:jsonp => { :foo => 'bar' })
-proxy.stub('http://example.com/headers/').and_return({
-  :headers => { 'Access-Control-Allow-Origin' => '*' },
-  :json    => { :foo => 'bar' }
-})
-proxy.stub('http://example.com/wtf/').and_return(:body => 'WTF!?', :content_type => 'text/wtf')
-
-# Stub redirections and other return codes
-proxy.stub('http://example.com/redirect/').and_return(:redirect_to => 'http://example.com/other')
-proxy.stub('http://example.com/missing/').and_return(:code => 404, :body => 'Not found')
-
-# Even stub HTTPS!
-proxy.stub('https://example.com:443/secure/').and_return(:text => 'secrets!!1!')
-
-# Pass a Proc (or Proc-style object) to create dynamic responses.
-#
-# The proc will be called with the following arguments:
-#   params:  Query string parameters hash, CGI::escape-style
-#   headers: Headers hash
-#   body:    Request body string
-#   url:     The actual URL which was requested
-#   method:  The HTTP verb which was requested
-proxy.stub('https://example.com/proc/').and_return(Proc.new { |params, headers, body, url, method|
-  {
-    :code => 200,
-    :text => "Hello, #{params['name'][0]}"
-  }
-})
-
-# You can also use Puffing Billy to intercept requests and responses. Just pass
-# a Proc and use the pass_request method. You can manipulate the request
-# (headers, URL, HTTP method, etc) and also the response from the upstream
-# server. The scope of the delivered callable is the user scope where
-# it was defined.
-proxy.stub('http://example.com/').and_return(Proc.new { |*args|
-  response = Billy.pass_request(*args)
-  response[:headers]['Content-Type'] = 'text/plain'
-  response[:body] = 'Hello World!'
-  response[:code] = 200
-  response
-})
-
-# Stub out a POST. Don't forget to allow a CORS request and set the method to 'post'
-proxy.stub('http://example.com/api', :method => 'post').and_return(
-  :headers => { 'Access-Control-Allow-Origin' => '*' },
-  :code => 201
-)
-
-# Stub out an OPTIONS request. Set the headers to the values you require.
-proxy.stub('http://example.com/api', :method => :options).and_return(
-  :headers => {
-    'Access-Control-Allow-Methods' => 'GET, PATCH, POST, PUT, OPTIONS',
-    'Access-Control-Allow-Headers' => 'X-Requested-With, X-Prototype-Version, Content-Type',
-    'Access-Control-Allow-Origin'  => '*'
-  },
-  :code => 200
-)
-```
-
-Stubs are reset between tests.  Any requests that are not stubbed will be
-proxied to the remote server.
-
-If for any reason you'd need to reset stubs manually you can do it in two ways:
-
-```ruby
-# reset a single stub
-example_stub = proxy.stub('http://example.com/text/').and_return(:text => 'Foobar')
-proxy.unstub example_stub
-
-# reset all stubs
-proxy.reset
-```
-
-## Cucumber Usage
+## Setup for Cucumber
 
 An example feature:
 
@@ -168,7 +97,7 @@ Feature: Stubbing via billy
     And a stub for google
 ```
 
-### Capybara
+### Setup for Cucumber + Capybara
 
 In your `features/support/env.rb`:
 
@@ -188,7 +117,7 @@ Before('@billy') do
 end
 
 And /^a stub for google$/ do
-  proxy.stub('http://www.google.com/').and_return(:text => "I'm not Google!")
+  proxy.stub('http://www.google.com/').and_return(text: "I'm not Google!")
   visit 'http://www.google.com/'
   expect(page).to have_content("I'm not Google!")
 end
@@ -199,7 +128,7 @@ It's good practice to reset the driver after each scenario, so having an
 stubs are reset after each step, so any usage of a stub should be in the
 same step that it was created in.
 
-### Watir
+### Setup for Cucumber + Watir
 
 In your `features/support/env.rb`:
 
@@ -219,7 +148,7 @@ Before('@billy') do
 end
 
 And /^a stub for google$/ do
-  proxy.stub('http://www.google.com/').and_return(:text => "I'm not Google!")
+  proxy.stub('http://www.google.com/').and_return(text: "I'm not Google!")
   @browser.goto 'http://www.google.com/'
   expect(@browser.text).to eq("I'm not Google!")
 end
@@ -230,6 +159,86 @@ end
 Please see [this link](https://gist.github.com/sauy7/1b081266dd453a1b737b) for
 details and report back to [Issue #49](https://github.com/oesmith/puffing-billy/issues/49)
 if you get it fully working.
+
+## Examples
+
+```ruby
+# Stub and return text, json, jsonp (or anything else)
+proxy.stub('http://example.com/text/').and_return(text: 'Foobar')
+proxy.stub('http://example.com/json/').and_return(json: { foo: 'bar' })
+proxy.stub('http://example.com/jsonp/').and_return(jsonp: { foo: 'bar' })
+proxy.stub('http://example.com/headers/').and_return(
+  headers: { 'Access-Control-Allow-Origin' => '*' },
+  json: { foo: 'bar' }
+)
+proxy.stub('http://example.com/wtf/').and_return(body: 'WTF!?', content_type: 'text/wtf')
+
+# Stub redirections and other return codes
+proxy.stub('http://example.com/redirect/').and_return(redirect_to: 'http://example.com/other')
+proxy.stub('http://example.com/missing/').and_return(code: 404, body: 'Not found')
+
+# Even stub HTTPS!
+proxy.stub('https://example.com:443/secure/').and_return(text: 'secrets!!1!')
+
+# Pass a Proc (or Proc-style object) to create dynamic responses.
+#
+# The proc will be called with the following arguments:
+#   params:  Query string parameters hash, CGI::escape-style
+#   headers: Headers hash
+#   body:    Request body string
+#   url:     The actual URL which was requested
+#   method:  The HTTP verb which was requested
+proxy.stub('https://example.com/proc/').and_return(Proc.new { |params, headers, body, url, method|
+  {
+    code: 200,
+    text: "Hello, #{params['name'][0]}"
+  }
+})
+
+# You can also use Puffing Billy to intercept requests and responses. Just pass
+# a Proc and use the pass_request method. You can manipulate the request
+# (headers, URL, HTTP method, etc) and also the response from the upstream
+# server. The scope of the delivered callable is the user scope where
+# it was defined. Setting method to 'all' will intercept requests regardless of
+# the method.
+proxy.stub('http://example.com/', method: 'all').and_return(Proc.new { |*args|
+  response = Billy.pass_request(*args)
+  response[:headers]['Content-Type'] = 'text/plain'
+  response[:body] = 'Hello World!'
+  response[:code] = 200
+  response
+})
+
+# Stub out a POST. Don't forget to allow a CORS request and set the method to 'post'
+proxy.stub('http://example.com/api', method: 'post').and_return(
+  headers: { 'Access-Control-Allow-Origin' => '*' },
+  code: 201
+)
+
+# Stub out an OPTIONS request. Set the headers to the values you require.
+proxy.stub('http://example.com/api', method: 'options').and_return(
+  headers: {
+    'Access-Control-Allow-Methods' => 'GET, PATCH, POST, PUT, OPTIONS',
+    'Access-Control-Allow-Headers' => 'X-Requested-With, X-Prototype-Version, Content-Type',
+    'Access-Control-Allow-Origin'  => '*'
+  },
+  code: 200
+)
+```
+
+Stubs are reset between tests.  Any requests that are not stubbed will be
+proxied to the remote server.
+
+If for any reason you'd need to reset stubs manually you can do it in two ways:
+
+```ruby
+# reset a single stub
+example_stub = proxy.stub('http://example.com/text/').and_return(text: 'Foobar')
+proxy.unstub example_stub
+
+# reset all stubs
+proxy.reset
+```
 
 ## Caching
 
@@ -243,7 +252,8 @@ In your `rails_helper.rb`:
 
 ```ruby
 Billy.configure do |c|
-  c.whitelist = ['test.host', 'localhost', '127.0.0.1']
+  c.whitelist = ['test.host', 'localhost', '127.0.0.1'] # To replace the default whitelist, OR
+  c.whitelist << 'mynewhost.local' # to append a host without overriding the defaults.
 end
 ```
 
@@ -256,6 +266,8 @@ adding this in your `rails_helper.rb`:
 server = Capybara.current_session.server
 Billy.config.whitelist = ["#{server.host}:#{server.port}"]
 ```
+
+If you would like to cache whitelisted URLs, you can define them in `c.cache_whitelist`. This is useful for scenarios where you may want to set `c.non_whitelisted_requests_disabled` to `true` to only allow whitelisted URLs to be accessed, but still allow specific URLs to be treated as if they were non-whitelisted.
 
 If you want to use puffing-billy like you would [VCR](https://github.com/vcr/vcr)
 you can turn on cache persistence. This way you don't have to manually mock out
@@ -286,6 +298,7 @@ Billy.configure do |c|
   c.proxy_port = 12345 # defaults to random
   c.proxied_request_host = nil
   c.proxied_request_port = 80
+  c.cache_whitelist = []
   c.record_requests = true # defaults to false
   c.cache_request_body_methods = ['post', 'patch', 'put'] # defaults to ['post']
 end
@@ -431,9 +444,6 @@ internally on this request, or your test ended before it could complete successf
 
 `c.after_cache_handles_request` is used to configure a callback that can operate on the response after it has been retrieved from the cache but before it is returned. The callback receives the request and response as arguments, with a request object like: `{ method: method, url: url, headers: headers, body: body }`. An example usage would be manipulating the Access-Control-Allow-Origin header so that your test server doesn't always have to run on the same port in order to accept cached responses to CORS requests:
 
-`c.use_ignore_params` is used to choose whether to use the ignore_params blacklist or the allow_params whitelist. Set to `true` to use `c.ignore_params`,
-`false` to use `c.allow_params`
-
 ```
 Billy.configure do |c|
   ...
@@ -449,6 +459,18 @@ Billy.configure do |c|
   c.after_cache_handles_request = fix_cors_header
   ...
 end
+```
+
+`c.use_ignore_params` is used to choose whether to use the ignore_params blacklist or the allow_params whitelist. Set to `true` to use `c.ignore_params`,
+`false` to use `c.allow_params`
+
+`c.before_handle_request` is used to modify `method`, `url`, `headers`, `body` before handle request by `stubs`, `cache` or `proxy`. Method accept 4 argumens and must return array of this arguments:
+
+```
+c.before_handle_request = proc { |method, url, headers, body|
+  filtered_body = JSON.dump(filter_secret_data(JSON.load(body)))
+  [method, url, headers, filtered_body]
+}
 ```
 
 `c.cache_simulates_network_delays` is used to add some delay before cache returns response. When set to `true`, cached requests will wait from configured delay time before responding. This allows to catch various race conditions in asynchronous front-end requests. The default is `false`.
@@ -517,10 +539,12 @@ RSpec.configure do |config|
 end
 ```
 
-## Separate Cache Directory for Each Test (in Cucumber)
+## Separate Cache Directory for Each Test
+If you want the cache for each test to be independent, i.e. have it's own directory where the cache files are stored, you can do so.
 
-If you want the cache for each test to be independent, i.e. have it's own directory where the cache files are stored, you can use a Before tag like so:
+### in Cucumber
 
+use a `Before` tag:
 ```rb
 Before('@javascript') do |scenario, block|
   Billy.configure do |c|
@@ -528,6 +552,30 @@ Before('@javascript') do |scenario, block|
     scenario_name = scenario.name.underscore
     c.cache_path = "features/support/fixtures/req_cache/#{feature_name}/#{scenario_name}/"
     Dir.mkdir_p(Billy.config.cache_path) unless File.exist?(Billy.config.cache_path)
+  end
+end
+```
+
+### in Rspec
+
+use a `before(:each)` block:
+
+```rb
+RSpec.configure do |config|
+  base_cache_path = Billy.config.cache_path
+  base_certs_path = Billy.config.certs_path
+  config.before :each do |x|
+    feature_name = x.metadata[:example_group][:description].underscore.gsub(' ', '_')
+    scenario_name = x.metadata[:description].underscore.gsub(' ', '_')
+    Billy.configure do |c|
+      cache_scenario_folder_path = "#{base_cache_path}/#{feature_name}/#{scenario_name}/"
+      FileUtils.mkdir_p(cache_scenario_folder_path) unless File.exist?(cache_scenario_folder_path)
+      c.cache_path = cache_scenario_folder_path
+
+      certs_scenario_folder_path = "#{base_certs_path}/#{feature_name}/#{scenario_name}/"
+      FileUtils.mkdir_p(certs_scenario_folder_path) unless File.exist?(certs_scenario_folder_path)
+      c.certs_path = certs_scenario_folder_path
+    end
   end
 end
 ```
@@ -575,6 +623,7 @@ and tell it to ignore SSL certificate warnings. See
 to see how Billy's default drivers are configured.
 
 ## Working with VCR and Webmock
+
 If you use VCR and Webmock elsewhere in your specs, you may need to disable them
 for your specs utilizing Puffing Billy. To do so, you can configure your `rails_helper.rb`
 as shown below:
@@ -604,7 +653,7 @@ Note that this approach may cause unexpected behavior if your backend sends the 
 
 ### Raising errors from stubs
 
-By default PuffingBilly suppress errors from stub-blocks.
+By default Puffing Billy suppresses errors from stub-blocks.
 To make it raise errors instead, add this test initializers:
 
 ```ruby
@@ -697,12 +746,6 @@ custom on-after hook.
 * [Integration Testing Stripe.js With Mocked Network Requests](http://dev.contractual.ly/testing-stripe-js-with-mocked-network/)
 * [Clean-up unused cache files periodically with this config](https://github.com/oesmith/puffing-billy/pull/26#issuecomment-29905030)
 
-## FAQ
-
-1. Why name it after a train?
-
-   Trains are *cool*.
-
 ## Contributing
 
 1. Fork it
@@ -713,5 +756,5 @@ custom on-after hook.
 
 ## TODO
 
-1. Integration for test frameworks other than rspec.
+1. Integration for test frameworks other than RSpec.
 2. Show errors from the EventMachine reactor loop in the test output.

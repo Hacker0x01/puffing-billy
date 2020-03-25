@@ -7,7 +7,8 @@ module Billy
       DRIVERS = {
         poltergeist: 'capybara/poltergeist',
         webkit: 'capybara/webkit',
-        selenium: 'selenium/webdriver'
+        selenium: 'selenium/webdriver',
+        apparition: 'capybara/apparition'
       }
 
       def self.register_drivers
@@ -46,25 +47,72 @@ module Billy
 
       def self.register_selenium_driver
         ::Capybara.register_driver :selenium_billy do |app|
-          profile = Selenium::WebDriver::Firefox::Profile.new
-          profile.assume_untrusted_certificate_issuer = false
-          profile.proxy = Selenium::WebDriver::Proxy.new(
-            http: "#{Billy.proxy.host}:#{Billy.proxy.port}",
-            ssl: "#{Billy.proxy.host}:#{Billy.proxy.port}")
-          ::Capybara::Selenium::Driver.new(app, profile: profile)
+          options = build_selenium_options_for_firefox
+          capabilities = Selenium::WebDriver::Remote::Capabilities.firefox(accept_insecure_certs: true)
+
+          ::Capybara::Selenium::Driver.new(app, options: options, desired_capabilities: capabilities)
+        end
+
+        ::Capybara.register_driver :selenium_headless_billy do |app|
+          options = build_selenium_options_for_firefox.tap do |opts|
+            opts.add_argument '-headless'
+          end
+          capabilities = Selenium::WebDriver::Remote::Capabilities.firefox(accept_insecure_certs: true)
+          
+          ::Capybara::Selenium::Driver.new(app, options: options, desired_capabilities: capabilities)
         end
 
         ::Capybara.register_driver :selenium_chrome_billy do |app|
           options = Selenium::WebDriver::Chrome::Options.new
+          options.add_argument('--ignore-certificate-errors')
           options.add_argument("--proxy-server=#{Billy.proxy.host}:#{Billy.proxy.port}")
 
           ::Capybara::Selenium::Driver.new(
-            app, browser: :chrome,
-            options: options
+            app,
+            browser: :chrome,
+            options: options,
+            clear_local_storage: true,
+            clear_session_storage: true
+          )
+        end
+
+        ::Capybara.register_driver :selenium_chrome_headless_billy do |app|
+            options = Selenium::WebDriver::Chrome::Options.new
+            options.headless!
+            options.add_argument('--enable-features=NetworkService,NetworkServiceInProcess')
+            options.add_argument('--ignore-certificate-errors')
+            options.add_argument("--proxy-server=#{Billy.proxy.host}:#{Billy.proxy.port}")
+            options.add_argument('--disable-gpu') if Gem.win_platform?
+            options.add_argument('--no-sandbox') if ENV['CI']
+
+          ::Capybara::Selenium::Driver.new(
+            app,
+            browser: :chrome,
+            options: options,
+            clear_local_storage: true,
+            clear_session_storage: true
           )
         end
       end
 
+      def self.register_apparition_driver
+        ::Capybara.register_driver :apparition_billy do |app|
+          ::Capybara::Apparition::Driver.new(app, ignore_https_errors: true).tap do |driver|
+            driver.set_proxy(Billy.proxy.host, Billy.proxy.port)
+          end
+        end
+      end
+
+      def self.build_selenium_options_for_firefox
+        profile = Selenium::WebDriver::Firefox::Profile.new.tap do |prof|
+          prof.assume_untrusted_certificate_issuer = false
+          prof.proxy = Selenium::WebDriver::Proxy.new(
+            http: "#{Billy.proxy.host}:#{Billy.proxy.port}",
+            ssl: "#{Billy.proxy.host}:#{Billy.proxy.port}")
+        end
+
+        Selenium::WebDriver::Firefox::Options.new(profile: profile)
+      end
     end
   end
 end

@@ -67,7 +67,7 @@ module Billy
 
     def build_request_options(url, headers, body)
       headers = Hash[headers.map { |k, v| [k.downcase, v] }]
-      headers.delete('accept-encoding')
+      headers['accept-encoding'] = ''
 
       uri = Addressable::URI.parse(url)
       headers.merge!({'authorization' => [uri.user, uri.password]}) if uri.userinfo
@@ -110,11 +110,21 @@ module Billy
 
       url = Addressable::URI.parse(url)
       # Cache the responses if they aren't whitelisted host[:port]s but always cache blacklisted paths on any hosts
-      cacheable_status?(status) && (!whitelisted_url?(url) || blacklisted_path?(url.path))
+      cacheable_status?(status) && (!whitelisted_url?(url) || blacklisted_path?(url.path) || cache_whitelisted_url?(url))
     end
 
     def whitelisted_url?(url)
       Billy.config.whitelist.any? do |value|
+        if value.is_a?(Regexp)
+          url.to_s =~ value || url.omit(:port).to_s =~ value
+        else
+          value =~ /^#{url.host}(?::#{url.port})?$/
+        end
+      end
+    end
+
+    def cache_whitelisted_url?(url)
+      Billy.config.cache_whitelist.any? do |value|
         if value.is_a?(Regexp)
           url.to_s =~ value || url.omit(:port).to_s =~ value
         else

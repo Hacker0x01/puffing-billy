@@ -1,3 +1,35 @@
+v2.3.1, 2020-03-19
+-------------------
+  * Update min 'faraday' gem version required [#285](https://github.com/oesmith/puffing-billy/pull/285)
+
+v2.3.0, 2019-12-26
+-------------------
+  * Add `cache_whitelist` config option [#279](https://github.com/oesmith/puffing-billy/pull/279)
+  * Ignore certificate errors in Chrome [#280](https://github.com/oesmith/puffing-billy/pull/280)
+
+v2.2.0, 2019-10-26
+-------------------
+  * Before handle request method [#273](https://github.com/oesmith/puffing-billy/pull/273)
+  * Add Selenium headless driver [#272](https://github.com/oesmith/puffing-billy/pull/272)
+
+v2.1.1, 2019-06-15
+-------------------
+  * Add driver registration for chrome headless [#267](https://github.com/oesmith/puffing-billy/pull/267)
+
+v2.1.0, 2019-03-17
+-------------------
+  * Allow stubbing all request methods [#263](https://github.com/oesmith/puffing-billy/pull/263)
+  * Accept all encodings [#265](https://github.com/oesmith/puffing-billy/pull/265)
+
+v2.0.0, 2019-01-30
+-------------------
+  * Add driver registration for apparition driver [#258](https://github.com/oesmith/puffing-billy/pull/258)
+    * Apparition driver requires puffing-billy to drop support for ruby 2.0-2.2
+
+v1.1.3, 2019-01-07
+-------------------
+  * Update eventmachine gem from 1.0.4 to 1.2 [#251](https://github.com/oesmith/puffing-billy/pull/251)
+
 v1.1.2, 2018-07-01
 -------------------
   * Don't attempt to print backtrace when it's not available [#245](https://github.com/oesmith/puffing-billy/pull/245)
